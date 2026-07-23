@@ -1,0 +1,576 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="工事一覧">
+<meta name="theme-color" content="#16212B">
+<title>工事一覧</title>
+<style>
+:root{
+  --bg:#E8ECEE;
+  --surface:#FFFFFF;
+  --ink:#16212B;
+  --ink2:#5B6873;
+  --ink3:#8A959E;
+  --line:#D5DBE0;
+  --line2:#E7EBEE;
+  --accent:#0B5E8A;
+  --accent-soft:#E4EFF6;
+  --alert:#B3261E;
+  --warn:#B96A0B;
+  --ok:#1E7A5C;
+  --radius:10px;
+  --mono:"SFMono-Regular",Menlo,Consolas,"Courier New",monospace;
+  --sans:"Hiragino Sans","Hiragino Kaku Gothic ProN","Yu Gothic Medium","Yu Gothic","Noto Sans JP","Meiryo",system-ui,sans-serif;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;padding:0}
+body{
+  background:var(--bg);color:var(--ink);font-family:var(--sans);
+  font-size:15px;line-height:1.5;
+  -webkit-text-size-adjust:100%;
+  padding-bottom:env(safe-area-inset-bottom);
+}
+button,input,select{font-family:inherit;color:inherit}
+
+/* ---------- ヘッダ ---------- */
+.topbar{
+  background:var(--ink);color:#fff;
+  padding:calc(env(safe-area-inset-top) + 10px) 14px 10px;
+  display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;
+}
+.topbar h1{
+  margin:0;font-size:16px;font-weight:600;letter-spacing:.14em;
+}
+.topbar .sub{font-size:11px;color:#9FB0BC;letter-spacing:.06em;font-family:var(--mono)}
+.topbar .spacer{flex:1}
+.topbar button{
+  background:transparent;border:1px solid #48586600;border-color:#425362;
+  color:#DCE5EB;font-size:12px;padding:5px 10px;border-radius:6px;cursor:pointer;
+}
+.topbar button:hover{background:#22303D}
+.topbar button:focus-visible{outline:2px solid #7FB6D6;outline-offset:2px}
+
+/* ---------- 集計 ---------- */
+.stats{
+  display:flex;gap:0;background:var(--ink);color:#fff;
+  padding:0 14px 12px;flex-wrap:wrap;
+}
+.stat{padding-right:20px;margin-right:20px;border-right:1px solid #34434F}
+.stat:last-child{border-right:0}
+.stat .v{font-family:var(--mono);font-size:19px;font-weight:600;letter-spacing:-.01em}
+.stat .k{font-size:10px;color:#93A5B2;letter-spacing:.08em}
+.stat.is-alert .v{color:#FF9B94}
+
+/* ---------- 操作パネル ---------- */
+.controls{
+  position:sticky;top:0;z-index:20;background:var(--bg);
+  border-bottom:1px solid var(--line);
+  padding:10px 14px 8px;
+}
+.searchrow{display:flex;gap:8px;align-items:center}
+.search{
+  flex:1;position:relative;
+}
+.search input{
+  width:100%;font-size:16px;padding:10px 34px 10px 12px;
+  border:1px solid var(--line);border-radius:var(--radius);background:var(--surface);
+}
+.search input:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+.search .clear{
+  position:absolute;right:6px;top:50%;transform:translateY(-50%);
+  border:0;background:transparent;color:var(--ink3);font-size:18px;
+  width:26px;height:26px;border-radius:50%;cursor:pointer;display:none;
+}
+.search .clear:hover{background:var(--line2);color:var(--ink)}
+.selects{display:flex;gap:8px;margin-top:8px}
+.selects select{
+  flex:1;font-size:14px;padding:8px 10px;border:1px solid var(--line);
+  border-radius:8px;background:var(--surface);min-width:0;
+}
+.chips{
+  display:flex;gap:6px;overflow-x:auto;margin-top:8px;padding-bottom:2px;
+  scrollbar-width:thin;-webkit-overflow-scrolling:touch;
+}
+.chips::-webkit-scrollbar{height:4px}
+.chips::-webkit-scrollbar-thumb{background:var(--line);border-radius:2px}
+.chip{
+  flex:0 0 auto;display:flex;align-items:center;gap:6px;
+  border:1px solid var(--line);background:var(--surface);
+  border-radius:20px;padding:5px 11px 5px 8px;font-size:13px;cursor:pointer;white-space:nowrap;
+}
+.chip .dot{width:9px;height:9px;border-radius:2px;flex:0 0 auto}
+.chip .n{font-family:var(--mono);font-size:11px;color:var(--ink3)}
+.chip[aria-pressed="true"]{background:var(--ink);color:#fff;border-color:var(--ink)}
+.chip[aria-pressed="true"] .n{color:#9FB0BC}
+.chip:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+
+/* ---------- 一覧 ---------- */
+.listwrap{padding:0 0 40px}
+.countline{
+  padding:10px 14px 6px;font-size:12px;color:var(--ink2);
+  display:flex;justify-content:space-between;align-items:center;
+}
+.countline b{font-family:var(--mono);color:var(--ink);font-size:14px}
+.list{list-style:none;margin:0;padding:0 10px}
+.row{
+  position:relative;background:var(--surface);border:1px solid var(--line);
+  border-left-width:5px;border-radius:8px;margin-bottom:7px;
+  padding:9px 12px 9px 11px;cursor:pointer;
+}
+.row:hover{border-color:var(--accent);box-shadow:0 1px 0 rgba(11,94,138,.12)}
+.row:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.r1{display:flex;align-items:center;gap:8px}
+.no{font-family:var(--mono);font-size:13px;letter-spacing:-.01em;color:var(--ink2)}
+.no b{color:var(--ink);font-weight:600}
+.no .br{color:var(--accent);font-weight:600}
+.badge{
+  margin-left:auto;font-size:11px;padding:2px 7px;border-radius:4px;
+  white-space:nowrap;border:1px solid;
+}
+.b-past{color:var(--alert);border-color:#EBC3C0;background:#FCF0EF}
+.b-soon{color:var(--warn);border-color:#EFD9B8;background:#FDF6EA}
+.b-run{color:var(--ok);border-color:#C3DFD5;background:#EFF7F4}
+.b-pre{color:var(--ink2);border-color:var(--line);background:#F4F6F7}
+.b-none{color:var(--ink3);border-color:var(--line2);background:transparent}
+.title{
+  margin:3px 0 4px;font-size:15px;font-weight:600;line-height:1.4;
+  word-break:break-word;
+}
+.meta{font-size:12px;color:var(--ink2);display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.meta .dates{font-family:var(--mono);font-size:11.5px;color:var(--ink3)}
+.amount{font-family:var(--mono);font-weight:600;color:var(--ink)}
+.more{
+  display:block;width:calc(100% - 20px);margin:6px 10px 0;padding:11px;
+  background:var(--surface);border:1px dashed var(--line);border-radius:8px;
+  color:var(--accent);font-size:13px;cursor:pointer;
+}
+.empty{padding:48px 24px;text-align:center;color:var(--ink2)}
+.empty b{display:block;font-size:15px;color:var(--ink);margin-bottom:6px}
+
+/* ---------- 詳細 ---------- */
+dialog{
+  border:0;padding:0;border-radius:14px;width:min(520px,92vw);
+  background:var(--surface);color:var(--ink);
+}
+dialog::backdrop{background:rgba(22,33,43,.45)}
+.dhead{padding:16px 18px 12px;border-bottom:1px solid var(--line2);display:flex;gap:10px;align-items:flex-start}
+.dhead .no{font-size:14px}
+.dclose{margin-left:auto;border:0;background:var(--line2);width:30px;height:30px;border-radius:50%;font-size:17px;cursor:pointer;color:var(--ink2);flex:0 0 auto}
+.dtitle{padding:14px 18px 4px;font-size:17px;font-weight:600;line-height:1.45}
+.dl{margin:0;padding:10px 18px 20px}
+.dl div{display:flex;gap:12px;padding:8px 0;border-bottom:1px solid var(--line2);font-size:14px}
+.dl div:last-child{border-bottom:0}
+.dl dt{flex:0 0 100px;color:var(--ink2);font-size:12.5px;padding-top:2px}
+.dl dd{margin:0;flex:1;word-break:break-word}
+.dl .mono{font-family:var(--mono)}
+
+/* ---------- PC ---------- */
+@media (min-width:760px){
+  body{font-size:14px}
+  .topbar,.stats{padding-left:22px;padding-right:22px}
+  .controls{padding:12px 22px 10px;display:flex;gap:12px;align-items:flex-start;flex-wrap:wrap}
+  .searchrow{flex:1 1 340px}
+  .selects{margin-top:0;flex:0 0 auto}
+  .selects select{flex:0 0 auto}
+  .chips{flex:1 1 100%;margin-top:2px}
+  .listwrap{padding:0 12px 60px}
+  .list{padding:0}
+  .row{
+    display:grid;
+    grid-template-columns:108px minmax(0,1fr) 116px 172px 104px auto;
+    gap:14px;align-items:center;padding:9px 14px 9px 11px;margin-bottom:5px;
+  }
+  .r1,.meta{display:contents}
+  .row .no{grid-column:1}
+  .row .title{grid-column:2;margin:0;font-size:14px}
+  .row .who{grid-column:3;font-size:13px;color:var(--ink)}
+  .row .dates{grid-column:4}
+  .row .badge{grid-column:5;margin-left:0;justify-self:stretch;text-align:center}
+  .row .amount{grid-column:6}
+  .countline{padding:12px 2px 8px}
+}
+@media (prefers-reduced-motion:no-preference){
+  .row{transition:border-color .12s ease,box-shadow .12s ease}
+}
+.visually-hidden{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <h1>工 事 一 覧</h1>
+  <span class="sub" id="srcname">—</span>
+  <span class="spacer"></span>
+  <button id="btn-load">CSVを読み込む</button>
+  <button id="btn-export">表示中をCSV保存</button>
+  <input type="file" id="file" accept=".csv,text/csv" class="visually-hidden">
+</header>
+
+<div class="stats" id="stats"></div>
+
+<div class="controls">
+  <div class="searchrow">
+    <div class="search">
+      <input id="q" type="search" placeholder="工事番号・工事名称・担当者で検索（スペース区切りでAND）" autocomplete="off" autocorrect="off" spellcheck="false">
+      <button class="clear" id="qclear" aria-label="検索条件を消す">×</button>
+    </div>
+  </div>
+  <div class="selects">
+    <select id="status" aria-label="工期でしぼり込む">
+      <option value="">工期：すべて</option>
+      <option value="run">進行中</option>
+      <option value="soon">30日以内に終了</option>
+      <option value="pre">着工前</option>
+      <option value="past">工期超過</option>
+      <option value="none">工期未設定</option>
+    </select>
+    <select id="sort" aria-label="並び順">
+      <option value="end-asc">工期終了 早い順</option>
+      <option value="no-desc">工事番号 新しい順</option>
+      <option value="no-asc">工事番号 古い順</option>
+      <option value="end-desc">工期終了 遅い順</option>
+      <option value="order-desc">受注日 新しい順</option>
+      <option value="name-asc">工事名称 五十音順</option>
+      <option value="amt-desc">金額 大きい順</option>
+    </select>
+  </div>
+  <div class="chips" id="chips"></div>
+</div>
+
+<div class="listwrap">
+  <div class="countline"><span><b id="cnt">0</b> 件</span><span id="hint"></span></div>
+  <ul class="list" id="list"></ul>
+  <button class="more" id="more" hidden></button>
+</div>
+
+<dialog id="detail">
+  <div class="dhead">
+    <span class="no" id="d-no"></span>
+    <button class="dclose" id="d-close" aria-label="閉じる">×</button>
+  </div>
+  <div class="dtitle" id="d-title"></div>
+  <dl class="dl" id="d-list"></dl>
+</dialog>
+
+<script>
+"use strict";
+
+/* ===== 埋め込みデータ ===== */
+const EMBEDDED = {"columns":["工事番号","工事名称","工事現場代理人名称","工事受注日","工事契約工期-開始","工事契約工期-終了"],"rows":[["530695-09","㈱ﾌﾙﾔ金属新千歳工場機械設備工事(空調換気設備工事)","池田　朋紀","2025/7/7","2025/4/1","2026/7/31"],["530840-12","(仮称)ﾚｸｻｽ札幌中央改修工事【機械設備工事】","西丸　大","2025/9/11","2025/9/12","2026/10/31"],["540145-05","市営伏古団地旧9,10号棟解体工事","藤江　俊彦","2025/11/28","2025/11/28","2026/9/30"],["540161-07","AGHﾄﾖﾀ札幌㈱ｱﾝﾋﾞｼｬｽ南9条･㈱ﾚﾝﾀﾘｰｽ新札幌すすきの南9条店　洗車場新築工事","古林　克彦","2025/12/4","2025/12/4","2026/11/30"],["540188-15","北海道札幌伏見支援学校もなみ学園分校増築暖房衛生設備工事","村田　育代","2025/12/15","2025/12/17","2027/2/15"],["540371-13","(仮称)Fﾋﾞﾚｯｼﾞ複合施設新築工事","奥村　一彦","2026/3/2","2025/11/17","2028/1/31"],["540420-10","ﾎﾝﾀﾞｶｰｽﾞ北海道Gloss苫小牧ｾﾝﾀｰ(仮称)新築工事","熊井　規之","2026/3/18","2026/4/13","2026/12/11"],["540443-24","令和8年度札幌すぎな園　浄化槽保守業務","村井　輝峰","2026/4/1","2026/4/1","2027/3/31"],["540451-24","㈱ｼﾞｪｰﾑｽｱﾝﾋﾞｼｬｽｼﾞｪｰﾑｽ琴似店　1階待合室FF暖房機交換","村井　輝峰","2026/4/1","2026/4/1","2026/7/20"],["540452-62","あいのさとﾜｰｸｾﾝﾀｰ　設備機器清掃点検保守業務(令和8年度)","髙橋　洸弥","2026/4/1","2026/4/1","2027/3/31"],["540453-62","美園産婦人科小児科　設備機器清掃点検保守業務(令和8年度)","髙橋　洸弥","2026/4/1","2026/4/1","2027/3/31"],["540454-62","南9条ｻﾎﾟｰﾄｾﾝﾀｰ　設備機器清掃点検保守業務(令和8年度)","髙橋　洸弥","2026/4/1","2026/4/1","2027/3/31"],["540455-62","浦河わらしべ園　設備機器清掃点検保守業務(令和8年度)","髙橋　洸弥","2026/4/1","2026/4/1","2027/3/31"],["540456-62","いどむ　設備機器清掃点検保守業務(令和8年度)","髙橋　洸弥","2026/4/1","2026/4/1","2027/3/31"],["540457-62","南幌みどり苑　設備機器清掃点検保守業務(令和8年度)","髙橋　洸弥","2026/4/1","2026/4/1","2027/3/31"],["540458-62","南幌みどり苑ﾃﾞｲｻｰﾋﾞｽｾﾝﾀｰ　設備機器清掃点検保守業務(令和8年度)","髙橋　洸弥","2026/4/1","2026/4/1","2027/3/31"],["540459-62","札幌あゆみの園　令和8年度消防設備保守業務(あゆみん含む)","髙橋　洸弥","2026/4/1","2026/4/1","2027/3/31"],["540460-62","札幌あゆみの園　令和8年度第2療養棟浴槽循環配管洗浄保守業務","髙橋　洸弥","2026/4/1","2026/4/1","2027/3/31"],["540461-62","札幌あゆみの園　令和8年度ﾎﾞｲﾗｰ保守業務","髙橋　洸弥","2026/4/1","2026/4/1","2027/3/31"],["540462-62","札幌あゆみの園　令和8年度受水槽清掃及び貯湯槽清掃保守業務","髙橋　洸弥","2026/4/1","2026/4/1","2027/3/31"],["540463-62","札幌あゆみの園　令和8年度ｵｿﾞﾝ発生装置保守業務","髙橋　洸弥","2026/4/1","2026/4/1","2027/3/31"],["540464-62","札幌あゆみの園　令和8年度給排気ﾌｧﾝ保守業務","髙橋　洸弥","2026/4/1","2026/4/1","2027/3/31"],["540465-62","札幌あゆみの園　令和8年度地下ｵｲﾙﾀﾝｸ保守業務","髙橋　洸弥","2026/4/1","2026/4/1","2027/3/31"],["540466-62","各施設　設備機器保守業務(令和8年度)","髙橋　洸弥","2026/4/1","2026/4/1","2027/3/31"],["540467-62","つきがた友朋の丘･樹温　設備機器清掃点検保守業務(令和8年度)","髙橋　洸弥","2026/4/1","2026/4/1","2027/3/31"],["540468-62","さくら･ﾋﾟｰｽ　設備機器清掃点検保守業務(令和8年度)","髙橋　洸弥","2026/4/1","2026/4/1","2027/3/31"],["540469-62","各施設　設備機器清掃点検保守業務(令和8年度)","髙橋　洸弥","2026/4/1","2026/4/1","2027/3/31"],["540470-62","第2この実寮　設備機器清掃点検保守業務(令和8年度)","髙橋　洸弥","2026/4/1","2026/4/1","2027/3/31"],["540471-62","北の沢ﾃﾞｲｾﾝﾀｰ　設備機器清掃点検保守業務(令和8年度)","髙橋　洸弥","2026/4/1","2026/4/1","2027/3/31"],["540473-62","もいわｻﾎﾟｰﾄｾﾝﾀｰ　設備機器清掃点検保守業務(令和8年度)","髙橋　洸弥","2026/4/1","2026/4/1","2027/3/31"],["540474-62","ｹｱﾎｰﾑ969　設備機器清掃点検保守業務(令和8年度)","髙橋　洸弥","2026/4/1","2026/4/1","2027/3/31"],["540475-62","おりーぶ･ｹｱﾎｰﾑ2.6　設備機器清掃点検保守業務(令和8年度)","髙橋　洸弥","2026/4/1","2026/4/1","2027/3/31"],["540476-62","すいんぐ･すきっぷ　設備機器清掃点検保守業務(令和8年度)","髙橋　洸弥","2026/4/1","2026/4/1","2027/3/31"],["540477-62","りらっく　設備機器清掃点検保守業務(令和8年度)","髙橋　洸弥","2026/4/1","2026/4/1","2027/3/31"],["540478-12","旭ヶ丘保育園　機械設備機器清掃点検保守業務(令和8年度)","西丸　大","2026/4/1","2026/4/1","2027/3/31"],["540479-12","㈱ｱﾄﾞﾜﾝ丘珠工場　設備機器清掃点検保守業務(令和8年度)","西丸　大","2026/4/1","2026/4/1","2027/3/31"],["540490-24","松﨑ﾋﾞﾙ　駐車場ﾙｰﾌﾄﾞﾚﾝ管詰まり修繕","村井　輝峰","2026/4/13","2026/4/13","2026/7/31"],["540494-24","便所ﾊﾟﾈﾙﾋｰﾀｰ交換","村井　輝峰","2026/4/13","2026/4/13","2026/9/30"],["540508-23","村山様邸　水抜栓交換","社本　滋宗","2026/4/14","2026/4/14","2026/7/20"],["540511-62","北海斎場　設備機器清掃点検保守業務(令和8年度)","髙橋　洸弥","2026/4/1","2026/4/1","2027/3/31"],["540512-62","泰信寺　浄化槽保守業務(令和8年度)","髙橋　洸弥","2026/4/1","2026/4/1","2027/3/31"],["540513-62","厚田はまなす園　設備機器清掃点検保守業務(令和8年度)","髙橋　洸弥","2026/4/1","2026/4/1","2027/3/31"],["540514-62","宗教法人祥龍寺　冷暖房換気設備保守業務(令和8年度)","髙橋　洸弥","2026/4/1","2026/4/1","2027/3/31"],["540515-62","岸本ﾋﾞﾙ　ｴｱｺﾝ保守業務(令和8年度)","髙橋　洸弥","2026/4/1","2026/4/1","2027/3/31"],["540516-62","ｷｬﾀﾋﾟﾗｰ本社　受水槽清掃･水質検査(令和8年度)","髙橋　洸弥","2026/4/1","2026/4/1","2027/3/31"],["540519-62","札北荘　ﾎﾞｲﾗｰ煤煙測定(令和8年度)","髙橋　洸弥","2026/4/1","2026/4/1","2027/3/31"],["540520-62","札北荘　ﾎﾞｲﾗｰ整備点検(令和8年度)","髙橋　洸弥","2026/4/1","2026/4/1","2027/3/31"],["540521-15","北海道札幌伏見支援学校もなみ学園分校増設工事(1工区)仮設給水工事","村田　育代","2026/4/15","2026/4/25","2027/4/30"],["540524-24","学校ﾌﾟｰﾙ設備保全業務その3","村井　輝峰","2026/4/17","2026/4/21","2026/10/30"],["540544-23","ﾊｲﾃﾞﾝｽ銀嶺　屋外灯油配管修繕","社本　滋宗","2026/4/24","2026/4/24","2026/7/31"],["540545-23","白石ﾛｲﾔﾙﾊｲﾂ　仮設給水工事","社本　滋宗","2026/4/24","2026/4/24","2026/8/31"],["540563-01","ｶﾈﾀ275ﾄﾗｯｸｾﾝﾀｰ　第一工場温風暖房機点検･ﾊﾞｰﾅｰ分解整備","奥村　一彦","","",""],["540576-24","ﾓﾛｵ札幌業務推進ｾﾝﾀｰ　冷暖房切り替え作業","村井　輝峰","2026/5/12","2026/5/12","2026/11/30"],["540585-24","東邦教育ｼｽﾃﾑｽﾞ本社ﾋﾞﾙ　汚水ﾎﾟﾝﾌﾟ交換","村井　輝峰","2026/5/14","2026/5/14","2026/7/20"],["540587-24","北海斎場　消火水槽防水工事","村井　輝峰","2026/5/18","2026/5/18","2026/8/31"],["540589-24","幸明幼稚園　空調設備点検清掃(令和8年度)","村井　輝峰","2026/5/19","2026/5/19","2026/12/31"],["540590-24","幸明幼稚園　GHPｴｱｺﾝ保守点検(令和8年度)","村井　輝峰","2026/5/19","2026/5/19","2026/12/31"],["540591-24","幸明幼稚園　厨房ｴｱｺﾝﾌｨﾙﾀｰ納品","村井　輝峰","2026/5/19","2026/5/19","2026/6/30"],["540601-24","住友生命保険総合会社　店舗総合点検補修工事 札幌北分館","村井　輝峰","2026/5/28","2026/5/28","2026/7/31"],["540607-24","住友生命麻生支部　令和8年度冷暖房器保守点検(6,9,12,3月)","村井　輝峰","2026/5/28","2026/5/28","2027/3/20"],["540611-13","札幌あゆみの園　改修工事","奥村　一彦","2026/6/1","2026/6/1","2026/6/30"],["540618-12","㈱ｱﾄﾞ･ﾜﾝ農産物処理加工工場ｺﾞﾐ消滅機添加供給ﾀﾝｸ設置配管設備工事","西丸　大","2026/6/3","2026/6/3","2026/7/31"],["540619-23","小野寺様邸　散水栓移設工事","社本　滋宗","2026/6/4","2026/6/4","2026/7/31"],["540624-24","新篠津中学校　ﾎﾞｲﾗｰ整備点検(年1回)","村井　輝峰","2026/6/5","2026/6/5","2026/8/31"],["540635-23","塚本様宅　便器交換","社本　滋宗","2026/6/9","2026/6/9","2026/7/31"],["540639-07","AGHﾄﾖﾀ札幌㈱ﾃｸﾉｾﾝﾀｰ大曲　1階ﾎﾞｲﾗｰ室補給水ﾎﾟﾝﾌﾟ更新工事","古林　克彦","2026/6/11","2026/6/11","2026/7/20"],["540648-24","令和8年度札幌すぎな園　浄化槽汚泥引抜き処分費(7月分)","村井　輝峰","2026/6/15","2026/6/15","2026/7/31"],["540649-24","令和8年度札幌すぎな園　浄化槽汚泥引抜き処分費(11月分)","村井　輝峰","2026/6/15","2026/6/15","2026/11/30"],["540650-24","令和8年度札幌すぎな園　浄化槽汚泥引抜き処分費(3月分)","村井　輝峰","2026/6/15","2026/6/15","2027/3/31"],["540653-24","佐藤様宅　LED電気工事","村井　輝峰","2026/6/17","2026/6/17","2026/9/30"],["540654-24","佐藤様宅　給湯ﾎﾞｲﾗｰ交換工事","村井　輝峰","2026/6/17","2026/6/17","2026/9/30"],["540656-04","社会福祉法人札親会札北荘移転新築工事に伴う防災工事(仮設工事)","宮城　浩一","2026/6/17","2026/6/17","2026/8/31"],["540657-04","ｵｰ･ｼﾞｰ㈱　喫煙室改修工事","宮城　浩一","2026/6/17","2026/6/17","2026/8/15"],["540661-62","北の沢ﾃﾞｲｾﾝﾀｰ　厨房ｴｱｺﾝﾌｨﾙﾀｰ納品","髙橋　洸弥","2026/6/18","2026/6/18","2026/7/31"],["540663-62","ﾊﾟﾝ工房ひかり･あさかげ　各所ﾛｰﾀﾝｸ部品交換","髙橋　洸弥","2026/6/18","2026/6/18","2026/7/31"],["540665-24","野口病院　ﾎﾞｲﾗｰ保守業務(令和8年度)","村井　輝峰","2026/6/18","2026/6/18","2026/11/30"],["540666-24","松﨑ﾋﾞﾙ　2階女子便所洗面台交換","村井　輝峰","2026/6/22","2026/6/22","2026/8/31"],["540667-01","ｵｰﾄﾊﾞｯｸｽ石狩花川店改修設備工事","近藤　澄","2026/6/23","2026/6/29","2026/9/10"],["540669-12","(仮称)ﾚｸｻｽ札幌中央改修工事　2階多目的ﾎｰﾙ他追加工事","西丸　大","2026/6/23","2026/6/29","2026/8/10"],["540671-24","札幌市立北園小学校　ﾌﾟｰﾙｲﾝﾀｰﾎﾝBOX交換","村井　輝峰","2026/6/23","2026/6/23","2026/7/31"],["540672-24","札幌市立開成小学校　ﾌﾟｰﾙ機械室換気扇交換","村井　輝峰","2026/6/23","2026/6/23","2026/7/31"],["540673-10","ときわ病院　1階多目的便所洗面器ﾚﾊﾞｰ式ｶﾗﾝ納品","熊井　規之","2026/6/24","2026/6/24","2026/7/31"],["540674-62","札幌あゆみの園　厨房3単水栓交換","髙橋　洸弥","2026/6/24","2026/6/24","2026/7/31"],["540675-07","石橋胃腸病院　新館2階234室前廊下天井内給湯管漏水修理他","古林　克彦","2026/6/24","2026/6/24","2026/7/3"],["540676-07","石橋胃腸病院　新館1階透析機械室他床下配管修繕","古林　克彦","2026/6/24","2026/6/24","2026/7/20"],["540677-13","手稲病院　1階工芸室改修工事(機械設備)","奥村　一彦","2026/6/24","2026/7/1","2026/8/31"],["540678-04","AGHﾄﾖﾀ札幌㈱ｱﾝﾋﾞｼｬｽ北32条　給油設備修理工事","宮城　浩一","2026/6/24","2026/6/24","2026/7/20"],["540679-07","石橋胃腸病院　新館3階NS便所洗浄便座取替","古林　克彦","2026/6/24","2026/6/24","2026/7/10"],["540680-07","石橋胃腸病院　新館3階病室(328)ﾛｽﾅｲ換気扇更新","古林　克彦","2026/6/24","2026/6/24","2026/7/20"],["540681-62","和田様宅　便所水抜栓漏水修繕","髙橋　洸弥","2026/6/26","2026/6/26","2026/7/20"],["540684-23","近様宅　屋外灯油配管修繕","社本　滋宗","2026/6/26","2026/6/26","2026/7/15"],["540685-23","つつじ　2階小便器詰まり､他排水管漏水修繕","社本　滋宗","2026/6/26","2026/6/26","2026/7/31"],["540686-23","大橋水産　ｸﾞﾚｰﾁﾝｸﾞ蓋納品","社本　滋宗","2026/6/29","2026/6/29","2026/7/31"],["540687-23","W31ﾋﾞﾙ　2階便器交換","社本　滋宗","2026/6/29","2026/6/29","2026/7/20"],["540688-62","南幌みどり苑ﾃﾞｲｻｰﾋﾞｽｾﾝﾀｰ　機械室給湯循環ﾎﾟﾝﾌﾟ交換","髙橋　洸弥","2026/6/29","2026/6/29","2026/7/31"],["540689-12","旭ヶ丘保育園　2階2歳児室扇風機取付工事","西丸　大","2026/6/29","2026/6/29","2026/7/31"],["540690-12","旭ヶ丘保育園　2階多目的室ｴｱｺﾝ取付工事","西丸　大","2026/6/29","2026/6/29","2026/7/31"],["540691-23","ｵｰﾄﾊﾞｯｸｽ西岡店ｶｰｽﾞｴｱ配管修繕工事","社本　滋宗","2026/6/29","2026/6/29","2026/7/20"],["540692-19","国岡製麺　屋外給水管水漏れ切り回し","南場　惇樹","2026/6/29","2026/6/29","2026/7/31"],["540693-01","ｲｴﾛｰﾊｯﾄ里塚店　水道ﾒｰﾀｰ移設工事","近藤　澄","2026/6/29","2026/6/29","2026/8/25"],["540694-04","ﾎﾝﾀﾞｶｰｽﾞ北海道U-Select平岸　廃油ﾀﾝｸ撤去再取付工事","宮城　浩一","2026/6/30","2026/6/30","2026/8/31"],["540696-10","ﾎﾝﾀﾞｶｰｽﾞ北海道手稲宮の沢店　1階ｼｬﾌﾄ内雨水漏水修繕工事","熊井　規之","2026/6/30","2026/6/30","2026/6/30"],["540697-24","山藤山陽印刷㈱　給水ﾕﾆｯﾄ整備点検(休日)","村井　輝峰","2026/6/30","2026/6/30","2026/9/30"],["540698-24","札幌高等技術専門学院　ｺﾝﾌﾟﾚｯｻｰﾌﾛﾝｶﾞｽ回収","村井　輝峰","2026/6/30","2026/6/30","2026/7/31"],["540699-10","ﾔｸﾙﾄ平岡店　換気扇清掃･ﾌｨﾙﾀｰ取付","熊井　規之","2026/7/1","2026/7/1","2026/7/31"],["540700-13","手稲病院　ﾃﾞｲｹｱ面接室ｴｱｺﾝ取付工事","奥村　一彦","2026/7/1","2026/7/1","2026/7/31"],["540701-07","ﾎﾃﾙﾊﾟｰﾙｼﾃｨ札幌　塔屋雨水管修理","古林　克彦","2026/7/2","2026/7/2","2026/8/20"],["540702-23","第2この実寮　機械室暖房用空気抜弁交換","社本　滋宗","2026/7/3","2026/7/3","2026/7/31"],["540703-23","札幌市立東光小学校　給食室自動水栓部品交換","社本　滋宗","2026/7/3","2026/7/3","2026/7/31"],["540704-62","平野様宅　便所水抜栓漏水修繕","髙橋　洸弥","2026/7/3","2026/7/3","2026/7/31"],["540705-10","ﾎﾝﾀﾞﾛｼﾞｽﾃｨｯｸ　既存倉庫改修工事","熊井　規之","2026/7/3","2026/7/3","2026/12/11"],["540706-04","AGHﾄﾖﾀ札幌㈱ｱﾝﾋﾞｼｬｽ百合が原屋外廃油配管更新工事","宮城　浩一","2026/7/6","2026/7/6","2026/8/31"],["540707-12","幌西ほうおん　屋上ｴｱｺﾝ室外機配管ｶﾊﾞｰ補修工事","西丸　大","2026/7/6","2026/7/7","2026/7/15"],["540708-23","瀧本様宅　ｳｫｼｭﾚｯﾄ交換","社本　滋宗","2026/7/6","2026/7/6","2026/7/31"],["540709-12","Jﾌｧｰﾑ札幌CMP1給水ﾀﾝｸﾎﾞｰﾙﾀｯﾌﾟ取替工事","西丸　大","2026/7/6","2026/7/6","2026/7/6"],["540710-12","Jﾌｧｰﾑ苫小牧塩ﾋﾞ資材納品","西丸　大","2026/7/6","2026/7/6","2026/7/6"],["540711-12","村上邸改修工事","西丸　大","2026/7/6","2026/7/17","2026/12/31"],["540712-62","札幌市あかしあ学園　3階男子便所大便器詰まり修繕","髙橋　洸弥","2026/7/6","2026/7/6","2026/7/31"],["540713-24","かりぷあつべつ　ｴｱｺﾝ点検調査","村井　輝峰","2026/7/7","2026/7/7","2026/7/31"],["540714-24","浦河わらしべ園　ろ過器制御盤修繕","村井　輝峰","2026/7/8","2026/7/8","2026/8/31"],["540715-24","浦河わらしべ園　ﾎﾞｲﾗｰ点検調査","村井　輝峰","2026/7/8","2026/7/8","2026/8/31"],["540716-24","ふらっと　2階ﾙｰﾑｴｱｺﾝ修繕","村井　輝峰","2026/7/9","2026/7/9","2026/7/31"],["540717-62","AGHﾄﾖﾀ札幌㈱ｱﾝﾋﾞｼｬｽ手稲店　洗車場水抜栓漏水修繕","髙橋　洸弥","2026/7/9","2026/7/9","2026/7/20"],["540718-23","市川様宅　天井内灯油配管修繕","社本　滋宗","2026/7/9","2026/7/9","2026/7/31"],["540720-23","ﾉｰｽﾐｰﾙ　101号室ﾊﾞﾙｺﾆｰRD管修繕","社本　滋宗","2026/7/10","2026/7/10","2026/7/31"],["540721-07","朝日ﾌﾟﾗｻﾞｾﾝﾄﾗﾙﾋﾞｭｰ南20条1階廊下天井内給水配管漏水修理","古林　克彦","2026/7/14","2026/7/14","2026/7/15"],["540722-07","AGHﾄﾖﾀ札幌㈱ﾃｸﾉｾﾝﾀｰ大曲　1階機械室給湯ﾎﾞｲﾗｰ修理","古林　克彦","2026/7/14","2026/7/14","2026/7/17"],["540723-10","幌東中学校　2階会議室壁換気扇取替工事","熊井　規之","2026/7/15","2026/7/15","2026/8/31"],["540724-62","札幌市立東光小学校　排水金具類納品","髙橋　洸弥","2026/7/15","2026/7/15","2026/7/31"],["540725-62","札幌市立東光小学校　作業室電気温水器系統給水配管詰まり清掃作業","髙橋　洸弥","2026/7/15","2026/7/15","2026/7/31"],["540726-62","つつじ　伸縮散水栓交換","髙橋　洸弥","2026/7/15","2026/7/15","2026/7/31"],["540727-19","ﾔﾏﾀﾞｲﾌｰｽﾞﾌﾟﾛｾｼﾝｸﾞ小樽工場　1階工場ﾄﾞﾚﾝ配管修繕工事","南場　惇樹","2026/7/15","2026/7/15","2026/8/31"],["540728-07","石橋胃腸病院　新館2階221室便座取替","古林　克彦","2026/7/15","2026/7/1","2026/7/23"],["540729-01","北海道ﾎﾝﾀﾞ販売㈱　休憩室冷房設備更新工事","近藤　澄","2026/7/16","2026/7/16","2026/7/28"],["540730-23","つつじ2　3階洗面所排水金物交換","社本　滋宗","2026/7/17","2026/7/17","2026/7/31"],["540731-23","つつじ　2階小便器ｾﾝｻｰ部品交換","社本　滋宗","2026/7/17","2026/7/17","2026/7/31"],["540732-07","AGHﾄﾖﾀ札幌㈱ﾙｰｷｰ100大麻寮　外壁ｾﾙﾌｰﾄﾞ取替工事","古林　克彦","2026/7/21","2026/7/21","2026/8/15"],["540733-24","札幌すぎな園　塩素注入装置点検調査","村井　輝峰","2026/7/22","2026/7/22","2026/7/31"],["540734-62","札幌あゆみの園　洗面化粧台ｼｬﾜｰﾍｯﾄﾞ交換","髙橋　洸弥","2026/7/22","2026/7/22","2026/7/31"],["540735-07","AGHﾄﾖﾀ札幌㈱ﾙｰｷｰ100大麻　3階天井内給湯配管工事","古林　克彦","2026/7/22","2026/7/22","2026/9/20"]]};
+
+/* ===== 文字列の正規化 =====
+   半角カナ/全角英数/㈱ などを NFKC でそろえ、ひらがな→カタカナ、英字は小文字に。
+   これで「フルヤ」でも「ﾌﾙﾔ」でも同じ行に当たる。 */
+function norm(s){
+  if(!s) return "";
+  let t = String(s).normalize("NFKC").toLowerCase();
+  t = t.replace(/[\u3041-\u3096]/g, c => String.fromCharCode(c.charCodeAt(0)+0x60));
+  return t.replace(/[\s\u3000･・,．.-]/g,"");
+}
+
+/* ===== CSV パーサ（引用符・改行入りセル対応） ===== */
+function parseCSV(text){
+  text = text.replace(/^\uFEFF/,"");
+  const rows=[]; let row=[], cell="", q=false;
+  for(let i=0;i<text.length;i++){
+    const c=text[i];
+    if(q){
+      if(c==='"'){ if(text[i+1]==='"'){cell+='"';i++;} else q=false; }
+      else cell+=c;
+    }else{
+      if(c==='"') q=true;
+      else if(c===','){ row.push(cell); cell=""; }
+      else if(c==='\n'){ row.push(cell); rows.push(row); row=[]; cell=""; }
+      else if(c==='\r'){ /* skip */ }
+      else cell+=c;
+    }
+  }
+  if(cell!=="" || row.length){ row.push(cell); rows.push(row); }
+  return rows.filter(r=>r.some(v=>v!==""));
+}
+
+/* ===== 文字コード判定（UTF-8 → だめなら Shift-JIS） ===== */
+function decodeBytes(buf){
+  try{ return new TextDecoder("utf-8",{fatal:true}).decode(buf); }
+  catch(e){ return new TextDecoder("shift_jis").decode(buf); }
+}
+
+/* ===== 列の自動割り当て ===== */
+const RE = {
+  no:/工事番号|現場番号|№|no\.?$/i,
+  name:/工事名称|工事名|件名|現場名/,
+  who:/現場代理人|担当|責任者|主任|監督/,
+  amt:/金額|請負|受注額|売上|価格|原価|実行予算/,
+  order:/受注日|受注/,
+  start:/開始|着工|着手/,
+  end:/終了|完了|竣工/
+};
+function mapColumns(cols){
+  const m={}; const used=new Set();
+  const pick=(key,re,extra)=>{
+    for(let i=0;i<cols.length;i++){
+      if(used.has(i)) continue;
+      if(re.test(cols[i]) && (!extra||extra(cols[i]))){ m[key]=i; used.add(i); return; }
+    }
+  };
+  pick("no",RE.no); pick("name",RE.name); pick("who",RE.who); pick("amt",RE.amt);
+  pick("order",RE.order); pick("start",RE.start); pick("end",RE.end);
+  return m;
+}
+
+/* ===== 日付・金額 ===== */
+function parseDate(v){
+  if(!v) return null;
+  const m=String(v).trim().match(/^(\d{4})\D+(\d{1,2})\D+(\d{1,2})/);
+  if(!m) return null;
+  const d=new Date(+m[1],+m[2]-1,+m[3]);
+  return isNaN(d)?null:d;
+}
+function fmtDate(d){
+  if(!d) return "—";
+  const p=n=>String(n).padStart(2,"0");
+  return d.getFullYear()+"/"+p(d.getMonth()+1)+"/"+p(d.getDate());
+}
+function parseAmount(v){
+  if(v==null||v==="") return null;
+  const n=Number(String(v).normalize("NFKC").replace(/[^0-9.-]/g,""));
+  return isFinite(n)&&String(v).match(/\d/)?n:null;
+}
+const yen=n=>"¥"+n.toLocaleString("ja-JP");
+
+/* ===== 担当ごとの色（工事番号の枝番＝担当コードに割り当て） ===== */
+const HUES=["#0B5E8A","#B3261E","#1E7A5C","#8A5A00","#5B3D8F","#0E7490","#A03A6B","#4A6B12",
+            "#2F4F7A","#8C3A12","#046A5E","#7A2E6A","#3E5C0F","#9A5B00","#1F4E79","#6B4423"];
+const colorCache=new Map();
+function colorFor(key){
+  if(!key) return "#B7C0C7";
+  if(colorCache.has(key)) return colorCache.get(key);
+  let h=0; for(const ch of key) h=(h*31+ch.charCodeAt(0))>>>0;
+  const c=HUES[h%HUES.length]; colorCache.set(key,c); return c;
+}
+
+/* ===== 状態 ===== */
+const TODAY=(()=>{const d=new Date();return new Date(d.getFullYear(),d.getMonth(),d.getDate());})();
+const DAY=86400000;
+/* CSVに完成・完了フラグが無いので、契約工期の終了日と今日の比較だけで判定している。
+   「工期超過」＝ 終了日を過ぎた工事。完成済みの工事まで含むCSVを読ませた場合は
+   過去の工事もここに入るので、その点だけ注意。 */
+function statusOf(r){
+  if(!r.end) return {k:"none",label:"工期未設定",cls:"b-none"};
+  const diff=Math.round((r.end-TODAY)/DAY);
+  if(diff<0) return {k:"past",label:"工期超過 "+(-diff)+"日",cls:"b-past"};
+  if(r.start&&r.start>TODAY) return {k:"pre",label:"着工前",cls:"b-pre"};
+  if(diff<=30) return {k:"soon",label:"残り "+diff+"日",cls:"b-soon"};
+  return {k:"run",label:"進行中",cls:"b-run"};
+}
+
+/* ===== データ構築 ===== */
+let COLS=[], MAP={}, DATA=[], HAS_AMT=false;
+function build(columns, rows, srcLabel){
+  COLS=columns; MAP=mapColumns(columns);
+  DATA=rows.map(cells=>{
+    const g=k=>MAP[k]!=null?(cells[MAP[k]]||"").trim():"";
+    const no=g("no");
+    const rec={
+      cells,
+      no, name:g("name"), who:g("who"),
+      branch:(no.split("-")[1]||""),
+      base:no.split("-")[0]||no,
+      amt:parseAmount(g("amt")),
+      order:parseDate(g("order")),
+      start:parseDate(g("start")),
+      end:parseDate(g("end"))
+    };
+    rec.key=norm(no+" "+rec.name+" "+rec.who);
+    return rec;
+  });
+  HAS_AMT = DATA.some(r=>r.amt!=null);
+  document.getElementById("srcname").textContent=srcLabel+" / "+DATA.length+"件";
+  document.querySelector('option[value="amt-desc"]').hidden=!HAS_AMT;
+  selected.clear();
+  renderChips(); renderStats(); apply();
+}
+
+/* ===== 担当チップ ===== */
+const selected=new Set();
+function renderChips(){
+  const map=new Map();
+  for(const r of DATA){
+    const k=r.who||"（担当なし）";
+    if(!map.has(k)) map.set(k,{n:0,code:r.branch});
+    map.get(k).n++;
+  }
+  const list=[...map.entries()].sort((a,b)=>b[1].n-a[1].n);
+  const el=document.getElementById("chips");
+  el.innerHTML=list.map(([who,v])=>
+    `<button class="chip" data-who="${esc(who)}" aria-pressed="false">
+       <span class="dot" style="background:${colorFor(v.code||who)}"></span>${esc(who)}<span class="n">${v.n}</span>
+     </button>`).join("");
+  el.querySelectorAll(".chip").forEach(b=>b.addEventListener("click",()=>{
+    const w=b.dataset.who;
+    if(selected.has(w)){selected.delete(w);b.setAttribute("aria-pressed","false");}
+    else{selected.add(w);b.setAttribute("aria-pressed","true");}
+    apply();
+  }));
+}
+
+/* ===== 集計 ===== */
+function renderStats(){
+  const c=k=>DATA.filter(r=>statusOf(r).k===k).length;
+  const who=new Set(DATA.map(r=>r.who).filter(Boolean)).size;
+  const items=[
+    {k:"工事件数",v:DATA.length},
+    {k:"担当者",v:who},
+    {k:"工期超過",v:c("past"),alert:c("past")>0},
+    {k:"30日以内に終了",v:c("soon")},
+    {k:"進行中",v:c("run")+c("pre")}
+  ];
+  if(HAS_AMT){
+    const sum=DATA.reduce((a,r)=>a+(r.amt||0),0);
+    items.push({k:"金額合計",v:(sum/1e6).toFixed(1)+"百万"});
+  }
+  document.getElementById("stats").innerHTML=items.map(i=>
+    `<div class="stat${i.alert?" is-alert":""}"><div class="v">${i.v}</div><div class="k">${i.k}</div></div>`).join("");
+}
+
+/* ===== 絞り込み・並び替え ===== */
+let VIEW=[], limit=0;
+const STEP=80;
+function apply(){
+  const terms=norm(document.getElementById("q").value).length
+    ? document.getElementById("q").value.trim().split(/[\s\u3000]+/).map(norm).filter(Boolean) : [];
+  const st=document.getElementById("status").value;
+  VIEW=DATA.filter(r=>{
+    if(selected.size && !selected.has(r.who||"（担当なし）")) return false;
+    if(st && statusOf(r).k!==st) return false;
+    for(const t of terms) if(!r.key.includes(t)) return false;
+    return true;
+  });
+  const s=document.getElementById("sort").value;
+  const cmp={
+    "no-desc":(a,b)=>b.no.localeCompare(a.no,"ja"),
+    "no-asc":(a,b)=>a.no.localeCompare(b.no,"ja"),
+    "end-asc":(a,b)=>(a.end?a.end:8e15)-(b.end?b.end:8e15),
+    "end-desc":(a,b)=>(b.end?b.end:-8e15)-(a.end?a.end:-8e15),
+    "order-desc":(a,b)=>(b.order?b.order:-8e15)-(a.order?a.order:-8e15),
+    "name-asc":(a,b)=>a.name.localeCompare(b.name,"ja"),
+    "amt-desc":(a,b)=>(b.amt||-1)-(a.amt||-1)
+  }[s];
+  VIEW.sort(cmp);
+  document.getElementById("cnt").textContent=VIEW.length;
+  document.getElementById("hint").textContent = VIEW.length===DATA.length ? "" : "全"+DATA.length+"件中";
+  limit=0; document.getElementById("list").innerHTML=""; drawMore();
+}
+
+function esc(s){return String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));}
+
+function rowHTML(r,i){
+  const st=statusOf(r);
+  const col=colorFor(r.branch||r.who);
+  const dates=(r.start||r.end)?fmtDate(r.start)+" – "+fmtDate(r.end):"工期未設定";
+  return `<li class="row" tabindex="0" data-i="${i}" style="border-left-color:${col}">
+    <div class="r1">
+      <span class="no"><b>${esc(r.base)}</b>${r.branch?'<span class="br">-'+esc(r.branch)+"</span>":""}</span>
+      <span class="badge ${st.cls}">${st.label}</span>
+    </div>
+    <div class="title">${esc(r.name||"（名称なし）")}</div>
+    <div class="meta">
+      <span class="who">${esc(r.who||"担当未設定")}</span>
+      <span class="dates">${dates}</span>
+      ${r.amt!=null?'<span class="amount">'+yen(r.amt)+"</span>":(HAS_AMT?"<span></span>":"")}
+    </div>
+  </li>`;
+}
+
+function drawMore(){
+  const list=document.getElementById("list");
+  const next=VIEW.slice(limit,limit+STEP);
+  if(!next.length && limit===0){
+    list.innerHTML=`<div class="empty"><b>該当する工事がありません</b>検索語を減らすか、担当者の絞り込みを外してください。</div>`;
+    document.getElementById("more").hidden=true; return;
+  }
+  list.insertAdjacentHTML("beforeend", next.map((r,k)=>rowHTML(r,limit+k)).join(""));
+  limit+=next.length;
+  const more=document.getElementById("more");
+  const rest=VIEW.length-limit;
+  more.hidden=rest<=0;
+  more.textContent="さらに "+Math.min(rest,STEP)+" 件を表示（残り "+rest+" 件）";
+}
+
+/* ===== 詳細 ===== */
+const dlg=document.getElementById("detail");
+function openDetail(i){
+  const r=VIEW[i]; if(!r) return;
+  document.getElementById("d-no").innerHTML=`<b>${esc(r.base)}</b>${r.branch?'<span class="br">-'+esc(r.branch)+"</span>":""}`;
+  document.getElementById("d-title").textContent=r.name||"（名称なし）";
+  const st=statusOf(r);
+  const rows=[["担当者",esc(r.who||"—"),""],["工期",fmtDate(r.start)+" – "+fmtDate(r.end),"mono"],["状況",st.label,""]];
+  if(r.order) rows.splice(1,0,["受注日",fmtDate(r.order),"mono"]);
+  if(r.amt!=null) rows.push(["金額",yen(r.amt),"mono"]);
+  COLS.forEach((c,idx)=>{
+    if(Object.values(MAP).includes(idx)) return;
+    const v=(r.cells[idx]||"").trim(); if(v) rows.push([esc(c),esc(v),""]);
+  });
+  document.getElementById("d-list").innerHTML=rows.map(([k,v,cls])=>
+    `<div><dt>${k}</dt><dd class="${cls}">${v}</dd></div>`).join("");
+  if(dlg.showModal) dlg.showModal(); else dlg.setAttribute("open","");
+}
+document.getElementById("d-close").addEventListener("click",()=>dlg.close());
+dlg.addEventListener("click",e=>{ if(e.target===dlg) dlg.close(); });
+
+/* ===== イベント ===== */
+let t=null;
+const q=document.getElementById("q");
+q.addEventListener("input",()=>{
+  document.getElementById("qclear").style.display=q.value?"block":"none";
+  clearTimeout(t); t=setTimeout(apply,90);
+});
+document.getElementById("qclear").addEventListener("click",()=>{
+  q.value=""; document.getElementById("qclear").style.display="none"; apply(); q.focus();
+});
+document.getElementById("status").addEventListener("change",apply);
+document.getElementById("sort").addEventListener("change",apply);
+document.getElementById("more").addEventListener("click",drawMore);
+document.getElementById("list").addEventListener("click",e=>{
+  const li=e.target.closest(".row"); if(li) openDetail(+li.dataset.i);
+});
+document.getElementById("list").addEventListener("keydown",e=>{
+  if(e.key!=="Enter"&&e.key!==" ") return;
+  const li=e.target.closest(".row"); if(li){e.preventDefault();openDetail(+li.dataset.i);}
+});
+
+/* CSV 読み込み */
+document.getElementById("btn-load").addEventListener("click",()=>document.getElementById("file").click());
+document.getElementById("file").addEventListener("change",async e=>{
+  const f=e.target.files[0]; if(!f) return;
+  try{
+    const rows=parseCSV(decodeBytes(await f.arrayBuffer()));
+    if(rows.length<2) throw new Error("行がありません");
+    build(rows[0].map(s=>s.trim()), rows.slice(1), f.name);
+    q.value=""; document.getElementById("status").value=""; apply();
+  }catch(err){
+    alert("このCSVは読み込めませんでした。\n1行目が見出し行のCSV（どっと原価の出力そのまま）を選んでください。\n\n"+err.message);
+  }
+  e.target.value="";
+});
+
+/* 表示中を CSV 保存（Excel 用に BOM 付き UTF-8） */
+document.getElementById("btn-export").addEventListener("click",()=>{
+  const esc2=v=>/[",\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v;
+  const body=[COLS.join(","),...VIEW.map(r=>r.cells.map(c=>esc2(c||"")).join(","))].join("\r\n");
+  const blob=new Blob(["\uFEFF"+body],{type:"text/csv;charset=utf-8"});
+  const a=document.createElement("a");
+  a.href=URL.createObjectURL(blob);
+  a.download="工事一覧_"+fmtDate(TODAY).replace(/\//g,"")+".csv";
+  a.click(); setTimeout(()=>URL.revokeObjectURL(a.href),1000);
+});
+
+/* 起動 */
+build(EMBEDDED.columns, EMBEDDED.rows, "工事一覧表4.csv");
+</script>
+</body>
+</html>
